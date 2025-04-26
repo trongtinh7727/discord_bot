@@ -6,6 +6,11 @@ const { YtDlpPlugin } = require('@distube/yt-dlp');
 const path = require('path');
 const axios = require('axios');
 
+const ytdl = require('@distube/ytdl-core');
+const fs = require('fs');
+const cookies = JSON.parse(fs.readFileSync('./ytb_cookies.json', 'utf8'));
+const agent = ytdl.createAgent(cookies);
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -20,11 +25,9 @@ const distube = new DisTube(client, {
     plugins: [new YtDlpPlugin({
         update: false,
         ytdlpOptions: {
-          requestOptions: {
-            cookies: require('fs').readFileSync('./ytb_cookies.txt', 'utf8')
-          }
+            agent: agent
         }
-      })]
+    })]
 });
 
 
