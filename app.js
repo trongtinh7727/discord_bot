@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 const TTSService = require('./TTSService');
 const { DisTube } = require('distube');
-import { YouTubePlugin } from "@distube/youtube";
+const { YouTubePlugin } = require("@distube/youtube");
 
 const path = require('path');
 const axios = require('axios');
