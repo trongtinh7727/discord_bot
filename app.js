@@ -25,7 +25,8 @@ const distube = new DisTube(client, {
     plugins: [new YtDlpPlugin({
         update: false,
         ytdlpOptions: {
-            agent: agent
+            agent: agent,
+            cookies: path.resolve(__dirname, 'ytb_cookies.json')
         }
     })]
 });
