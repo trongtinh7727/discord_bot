@@ -1,7 +1,8 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 const TTSService = require('./TTSService');
-const { addToQueue, skip, stop, toggleRepeat } = require('./musicService');
+const { DisTube } = require('distube');
+const { YtDlpPlugin } = require('@distube/yt-dlp');
 const path = require('path');
 const axios = require('axios');
 
@@ -13,6 +14,15 @@ const client = new Client({
         GatewayIntentBits.MessageContent
     ]
 });
+
+const distube = new DisTube(client, {
+    leaveOnEmpty: true,
+    leaveOnFinish: false,
+    leaveOnStop: true,
+    emitNewSongOnly: true,
+    plugins: [new YtDlpPlugin()]
+});
+
 
 let globalSpeed = 1.0; // Default speed
 const ttsService = new TTSService(globalSpeed);
@@ -54,23 +64,31 @@ client.on('messageCreate', async (message) => {
         },
         '!play': async () => {
             const url = args[0];
-            const voiceChannel = message.member.voice.channel;
             if (!url) return message.reply('⛔ Hãy nhập một URL YouTube!');
+            const voiceChannel = message.member.voice.channel;
             if (!voiceChannel) return message.reply('🔇 Bạn cần vào voice channel trước!');
-            await addToQueue(voiceChannel, url);
-            message.reply(`🎵 Đã thêm vào queue: ${url}`);
+            distube.play(voiceChannel, url, { textChannel: message.channel, member: message.member });
         },
+
         '!skip': async () => {
-            skipSong();
+            const queue = distube.getQueue(message);
+            if (!queue) return message.reply('❌ Không có bài nào đang phát!');
+            queue.skip();
             message.reply('⏭️ Đã bỏ qua bài hát hiện tại!');
         },
+
         '!stop': async () => {
-            stop();
-            message.reply('⏹️ Đã dừng nhạc!');
+            const queue = distube.getQueue(message);
+            if (!queue) return message.reply('❌ Không có gì để dừng!');
+            queue.stop();
+            message.reply('🛑 Đã dừng phát nhạc.');
         },
+
         '!repeat': async () => {
-            const status = toggleRepeat();
-            message.reply(`🔁 Repeat mode: ${status ? 'BẬT' : 'TẮT'}`);
+            const queue = distube.getQueue(message);
+            if (!queue) return message.reply('❌ Không có gì để lặp lại!');
+            const mode = distube.setRepeatMode(queue, (queue.repeatMode + 1) % 3); // 0: off, 1: song, 2: queue
+            message.reply(`🔁 Repeat mode set to: ${mode === 0 ? 'OFF' : mode === 1 ? 'Song' : 'Queue'}`);
         },
         '!adj': async () => {
             if (args.length < 1) return message.reply('Please provide a speed value.');
