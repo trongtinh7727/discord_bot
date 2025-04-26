@@ -17,7 +17,14 @@ const client = new Client({
 
 const distube = new DisTube(client, {
     emitNewSongOnly: true,
-    plugins: [new YtDlpPlugin()]
+    plugins: [new YtDlpPlugin({
+        update: false,
+        ytdlpOptions: {
+          requestOptions: {
+            cookies: require('fs').readFileSync('./ytb_cookies.txt', 'utf8')
+          }
+        }
+      })]
 });
 
 
