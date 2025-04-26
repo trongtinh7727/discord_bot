@@ -12,6 +12,7 @@
     "dependencies": {
         "@discordjs/opus": "^0.10.0",
         "@discordjs/voice": "^0.17.0",
+        "@distube/youtube": "^1.0.4",
         "@distube/ytdl-core": "^4.16.8",
         "@napi-rs/canvas": "^0.1.60",
         "axios": "^1.7.9",

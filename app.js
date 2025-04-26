@@ -2,14 +2,14 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 const TTSService = require('./TTSService');
 const { DisTube } = require('distube');
-const { YtDlpPlugin } = require('@distube/yt-dlp');
+import { YouTubePlugin } from "@distube/youtube";
+
 const path = require('path');
 const axios = require('axios');
 
-const ytdl = require('@distube/ytdl-core');
 const fs = require('fs');
 const cookies = JSON.parse(fs.readFileSync('./ytb_cookies.json', 'utf8'));
-const agent = ytdl.createAgent(cookies);
+
 
 const client = new Client({
     intents: [
@@ -22,13 +22,7 @@ const client = new Client({
 
 const distube = new DisTube(client, {
     emitNewSongOnly: true,
-    plugins: [new YtDlpPlugin({
-        update: false,
-        ytdlpOptions: {
-            agent: agent,
-            cookies: path.resolve(__dirname, 'ytb_cookies.json')
-        }
-    })]
+    plugins: [new YouTubePlugin({ cookies: cookies })],
 });
 
 
