@@ -18,8 +18,8 @@ A simple and powerful Discord music bot that plays YouTube audio with queue and 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/TDung0807/TextToSpeech_Discord.git
-cd TextToSpeech_Discord
+git clone https://github.com/trongtinh7727/discord_bot.git
+cd discord_bot
 ```
 
 ### 2. Install dependencies
