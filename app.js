@@ -16,8 +16,7 @@ const client = new Client({
 });
 
 const distube = new DisTube(client, {
-    leaveOnEmpty: true,
-    leaveOnFinish: false,
+    leaveOnFinish: true,
     leaveOnStop: true,
     emitNewSongOnly: true,
     plugins: [new YtDlpPlugin()]
