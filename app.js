@@ -182,7 +182,7 @@ async function processQueue() {
     ttsService.isSpeaking = true;
 
     try {
-        await ttsService.handleTTS(text, voiceChannel);
+        await ttsService.handleTTS(text, voiceChannel); // Chờ phát xong mới tiếp tục
     } finally {
         ttsService.isSpeaking = false;
         if (textQueue.length > 0) processQueue();

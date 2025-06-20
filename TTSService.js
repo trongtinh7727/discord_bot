@@ -5,7 +5,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 
 class TTSService {
-    constructor(globalSpeed = 1.2,language = 'vi') {
+    constructor(globalSpeed = 1.2, language = 'vi') {
         this.globalSpeed = globalSpeed;
         this.language = language;
     }
@@ -17,16 +17,17 @@ class TTSService {
             adapterCreator: voiceChannel.guild.voiceAdapterCreator,
         });
 
-        const audioFilePath = await this.fetchTTS(text,this.language);
+        const audioFilePath = await this.fetchTTS(text, this.language);
         const outputFilePath = path.join(__dirname, 'tts_fast.mp3');
         await this.adjustSpeed(audioFilePath, outputFilePath, this.globalSpeed);
 
         console.log('Audio processed and saved at', outputFilePath);
 
-        this.playAudio(outputFilePath, connection, audioFilePath);
+        // Đợi phát xong mới resolve
+        await this.playAudio(outputFilePath, connection, audioFilePath);
     }
 
-    async fetchTTS(text,language) {
+    async fetchTTS(text, language) {
         const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${encodeURIComponent(language)}&client=tw-ob`;
         const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch TTS audio');
@@ -51,15 +52,18 @@ class TTSService {
     }
 
     playAudio(filePath, connection, originalFilePath) {
-        const audioResource = createAudioResource(filePath);
-        const audioPlayer = createAudioPlayer();
+        return new Promise((resolve) => {
+            const audioResource = createAudioResource(filePath);
+            const audioPlayer = createAudioPlayer();
 
-        audioPlayer.play(audioResource);
-        connection.subscribe(audioPlayer);
+            audioPlayer.play(audioResource);
+            connection.subscribe(audioPlayer);
 
-        audioPlayer.on(AudioPlayerStatus.Idle, () => {
-            fs.unlinkSync(filePath); // Clean up the temporary file
-            if (originalFilePath) fs.unlinkSync(originalFilePath); // Clean up the original TTS file if provided
+            audioPlayer.on(AudioPlayerStatus.Idle, () => {
+                fs.unlinkSync(filePath); // Clean up the temporary file
+                if (originalFilePath) fs.unlinkSync(originalFilePath); // Clean up the original TTS file if provided
+                resolve(); // Báo hiệu đã phát xong
+            });
         });
     }
 }
