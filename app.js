@@ -126,19 +126,20 @@ client.on('messageCreate', async (message) => {
         },
         '!help': async () => {
             const helpMessage = `
-            \`\`\`
-                !tts <text> - Converts text to speech
-                !adj <speed> - Adjusts speech speed (0.5 - 5)
-                !language <language> - Adjusts speech language (vi, en, ja)
-                !play <url> - Plays a YouTube video
-                !skip - Skips the current song
-                !stop - Stops the current song
-                !repeat - Toggles repeat mode
-                !stk - Displays bank account number
-                !help - Displays this help message
-                !exit - Exits the bot
-            \`\`\`
-            `;
+\`\`\`
+!tts <text>         - Convert text to speech
+!adj <speed>        - Set speed (0.5 - 5)
+!language <vi|en|ja>- Set language
+!queue              - Show queue
+!stats              - Show status
+!ping               - Latency & host IP
+!clearqueue         - Clear queue (admin)
+!remove <index>     - Remove queue item (admin)
+!stk                - Bank info
+!exit               - Stop bot (admin)
+!help               - This help
+\`\`\`
+`;
             message.reply(helpMessage);
         },
         '!exit': async () => {
