@@ -41,8 +41,8 @@ jobs:
           echo "[*] Checking deployment method..."
           if [ -f docker-compose.yml ]; then
             echo "[*] Using Docker Compose..."
-            docker compose down || true
-            docker compose up -d --build
+            docker-compose down || true
+            docker-compose up -d --build
             docker image prune -f || true
           fi
           
