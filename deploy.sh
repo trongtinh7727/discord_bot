@@ -18,6 +18,11 @@ fi
 cd "$APP_DIR"
 
 echo "[*] Current directory: $(pwd)"
+
+echo "[*] Fixing Git ownership and permissions..."
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+sudo chown -R ubuntu:ubuntu "$APP_DIR" 2>/dev/null || true
+
 echo "[*] Git status before pull:"
 git status --short
 

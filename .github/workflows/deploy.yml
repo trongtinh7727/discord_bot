@@ -29,6 +29,10 @@ jobs:
           echo "[*] Switching to app directory..."
           cd /home/ubuntu/discord/discord_bot
           
+          echo "[*] Fixing Git ownership..."
+          git config --global --add safe.directory /home/ubuntu/discord/discord_bot
+          sudo chown -R ubuntu:ubuntu /home/ubuntu/discord/discord_bot
+          
           echo "[*] Fetching latest code..."
           git fetch --all
           git reset --hard origin/main
