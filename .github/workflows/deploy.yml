@@ -1,0 +1,70 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+        
+    - name: Add server to known hosts
+      run: |
+        ssh-keyscan -H 129.150.62.81 >> ~/.ssh/known_hosts
+        
+    - name: Deploy to VPS
+      run: |
+        ssh ubuntu@129.150.62.81 << 'EOF'
+          set -e
+          echo "[*] Switching to app directory..."
+          cd /home/ubuntu/discord/discord_bot
+          
+          echo "[*] Fetching latest code..."
+          git fetch --all
+          git reset --hard origin/main
+          git pull origin main
+          
+          echo "[*] Installing dependencies..."
+          npm install --production
+          
+          echo "[*] Checking deployment method..."
+          if [ -f docker-compose.yml ]; then
+            echo "[*] Using Docker Compose..."
+            docker compose down || true
+            docker compose up -d --build
+            docker image prune -f || true
+          elif command -v pm2 > /dev/null; then
+            echo "[*] Using PM2..."
+            pm2 restart tts-bot || pm2 start app.js --name tts-bot
+            pm2 save
+          else
+            echo "[*] Starting with node..."
+            pkill -f "node app.js" || true
+            nohup node app.js > bot.log 2>&1 &
+          fi
+          
+          echo "[✓] Deploy completed!"
+        EOF
+        
+    - name: Verify deployment
+      run: |
+        ssh ubuntu@129.150.62.81 << 'EOF'
+          cd /home/ubuntu/discord/discord_bot
+          if [ -f docker-compose.yml ]; then
+            docker compose ps
+          elif command -v pm2 > /dev/null; then
+            pm2 status tts-bot
+          else
+            ps aux | grep "node app.js" | grep -v grep || echo "Process not found"
+          fi
+        EOF
