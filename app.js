@@ -1,15 +1,9 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 const TTSService = require('./TTSService');
-const { DisTube } = require('distube');
-const { YouTubePlugin } = require("@distube/youtube");
 
 const path = require('path');
 const axios = require('axios');
-
-const fs = require('fs');
-const cookies = JSON.parse(fs.readFileSync('./ytb_cookies.json', 'utf8'));
-
 
 const client = new Client({
     intents: [
@@ -20,18 +14,14 @@ const client = new Client({
     ]
 });
 
-const distube = new DisTube(client, {
-    emitNewSongOnly: true,
-    plugins: [new YouTubePlugin({ cookies: cookies })],
-});
 
 
-let globalSpeed = 1.0; // Default speed
+let globalSpeed = 1.3; // Default speed
 const ttsService = new TTSService(globalSpeed);
 
 const textQueue = [];
-const MAX_QUEUE_SIZE = 5;
-const MAX_TEXT_LENGTH = 200; // Maximum length for each text
+const MAX_TEXT_LENGTH = 2000; // Maximum length for each text
+const MAX_QUEUE_SIZE = 50;
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
@@ -54,43 +44,58 @@ client.on('messageCreate', async (message) => {
                 return message.reply(`Text too long, max length is ${MAX_TEXT_LENGTH} characters.`);
             }
 
+            if (textQueue.length >= MAX_QUEUE_SIZE) {
+                return message.reply(`Queue full (>= ${MAX_QUEUE_SIZE}), wait a bit.`);
+            }
+
             const voiceChannel = message.member.voice.channel;
             if (!voiceChannel) return message.reply('You need to join a voice channel first.');
-
-            if (textQueue.length >= MAX_QUEUE_SIZE) {
-                return message.reply('Queue is full, please wait a moment.');
-            }
 
             textQueue.push({ text, voiceChannel });
             processQueue();
         },
-        '!play': async () => {
-            const url = args[0];
-            if (!url) return message.reply('⛔ Hãy nhập một URL YouTube!');
-            const voiceChannel = message.member.voice.channel;
-            if (!voiceChannel) return message.reply('🔇 Bạn cần vào voice channel trước!');
-            distube.play(voiceChannel, url, { textChannel: message.channel, member: message.member });
+        '!queue': async () => {
+            if (textQueue.length === 0 && !ttsService.isSpeaking) return message.reply('Queue empty.');
+            const lines = textQueue.slice(0, 10).map((item, i) => {
+                const snippet = item.text.length > 40 ? item.text.slice(0, 37) + '...' : item.text;
+                return `${i + 1}. ${snippet} (${item.user || 'unknown'})`;
+            });
+            message.reply(
+                'Current: ' + (ttsService.isSpeaking ? 'Playing' : 'Idle') + '\n' +
+                (lines.length ? lines.join('\n') : 'No pending items.') +
+                (textQueue.length > 10 ? `\n...and ${textQueue.length - 10} more` : '')
+            );
         },
-
-        '!skip': async () => {
-            const queue = distube.getQueue(message);
-            if (!queue) return message.reply('❌ Không có bài nào đang phát!');
-            queue.skip();
-            message.reply('⏭️ Đã bỏ qua bài hát hiện tại!');
+        '!clearqueue': async () => {
+            if (!isAdmin(message.member)) return message.reply('No permission.');
+            textQueue.length = 0;
+            message.reply('Queue cleared.');
         },
-
-        '!stop': async () => {
-            const queue = distube.getQueue(message);
-            if (!queue) return message.reply('❌ Không có gì để dừng!');
-            queue.stop();
-            message.reply('🛑 Đã dừng phát nhạc.');
+        '!remove': async () => {
+            if (!isAdmin(message.member)) return message.reply('No permission.');
+            if (args.length < 1) return message.reply('Usage: !remove <index>');
+            const idx = parseInt(args[0], 10);
+            if (isNaN(idx) || idx < 1 || idx > textQueue.length) return message.reply('Invalid index.');
+            const removed = textQueue.splice(idx - 1, 1)[0];
+            message.reply(`Removed: ${removed.text.slice(0, 50)}`);
         },
-
-        '!repeat': async () => {
-            const queue = distube.getQueue(message);
-            if (!queue) return message.reply('❌ Không có gì để lặp lại!');
-            const mode = distube.setRepeatMode(queue, (queue.repeatMode + 1) % 3); // 0: off, 1: song, 2: queue
-            message.reply(`🔁 Repeat mode set to: ${mode === 0 ? 'OFF' : mode === 1 ? 'Song' : 'Queue'}`);
+        '!ping': async () => {
+            const sent = Date.now();
+            const replyMsg = await message.reply('Pinging...');
+            const latency = Date.now() - sent;
+            let externalIP = 'n/a';
+            try {
+                const res = await axios.get('https://api.ipify.org?format=json', { timeout: 3000 });
+                externalIP = res.data.ip;
+            } catch { }
+            const wsPing = Math.round(client.ws.ping);
+            replyMsg.edit(`Pong! Latency: ${latency}ms | WS: ${wsPing}ms | Host IP: ${externalIP}`);
+        },
+        '!stats': async () => {
+            message.reply(
+                `Speed: ${ttsService.globalSpeed} | Lang: ${ttsService.language} | ` +
+                `Queue: ${textQueue.length} | Speaking: ${ttsService.isSpeaking ? 'yes' : 'no'}`
+            );
         },
         '!adj': async () => {
             if (args.length < 1) return message.reply('Please provide a speed value.');
@@ -121,6 +126,7 @@ client.on('messageCreate', async (message) => {
         },
         '!help': async () => {
             const helpMessage = `
+            \`\`\`
                 !tts <text> - Converts text to speech
                 !adj <speed> - Adjusts speech speed (0.5 - 5)
                 !language <language> - Adjusts speech language (vi, en, ja)
@@ -131,6 +137,7 @@ client.on('messageCreate', async (message) => {
                 !stk - Displays bank account number
                 !help - Displays this help message
                 !exit - Exits the bot
+            \`\`\`
             `;
             message.reply(helpMessage);
         },

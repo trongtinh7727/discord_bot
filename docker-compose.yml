@@ -1,0 +1,13 @@
+services:
+  discord-bot:
+    build: .
+    container_name: discord-bot
+    restart: unless-stopped
+    volumes:
+      - ./images:/app/images
+      - ./config.json:/app/config.json
+      - ./qr_codes:/app/qr_codes
+      - ./qr_data.json:/app/qr_data.json
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
