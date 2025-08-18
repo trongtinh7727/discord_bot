@@ -8,56 +8,78 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup SSH
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-        
-    - name: Add server to known hosts
-      run: |
-        ssh-keyscan -H 140.245.121.73 >> ~/.ssh/known_hosts
-        
-    - name: Deploy to VPS
-      run: |
-        ssh ubuntu@140.245.121.73 << 'EOF'
-          set -e
-          echo "[*] Switching to app directory..."
-          cd /home/ubuntu/discord/discord_bot
-          
-          echo "[*] Fixing Git ownership..."
-          git config --global --add safe.directory /home/ubuntu/discord/discord_bot
-          sudo chown -R ubuntu:ubuntu /home/ubuntu/discord/discord_bot
-          
-          echo "[*] Fetching latest code..."
-          git fetch --all
-          git reset --hard origin/main
-          git pull origin main
 
-          echo "[*] Checking deployment method..."
-          if [ -f docker-compose.yml ]; then
-            echo "[*] Using Docker Compose..."
-            docker-compose down || true
-            docker-compose up -d --build
-            docker image prune -f || true
-          fi
-          
-          echo "[✓] Deploy completed!"
-        EOF
-        
-    - name: Verify deployment
-      run: |
-        ssh ubuntu@140.245.121.73 << 'EOF'
-          cd /home/ubuntu/discord/discord_bot
-          if [ -f docker-compose.yml ]; then
-            docker-compose ps
-          elif command -v pm2 > /dev/null; then
-            pm2 status tts-bot
-          else
-            ps aux | grep "node app.js" | grep -v grep || echo "Process not found"
-          fi
-        EOF
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 140.245.121.73 >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        run: |
+          ssh ubuntu@140.245.121.73 << 'EOF'
+            set -euo pipefail
+
+            echo "[*] Switching to app directory..."
+            cd /home/ubuntu/discord/discord_bot
+
+            echo "[*] Fix Git ownership..."
+            git config --global --add safe.directory /home/ubuntu/discord/discord_bot
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/discord/discord_bot
+
+            echo "[*] Fetch latest code..."
+            git fetch --all
+            git reset --hard origin/main
+            git pull origin main
+
+            echo "[*] Checking deployment method..."
+            if [ -f docker-compose.yml ]; then
+              echo "[*] Using Docker Compose..."
+              # Prefer Compose v2, fall back to v1; install plugin if absent.
+              if sudo docker compose version >/dev/null 2>&1; then
+                sudo docker compose down || true
+                sudo docker compose up -d --build
+              elif command -v docker-compose >/dev/null 2>&1; then
+                sudo docker-compose down || true
+                sudo docker-compose up -d --build
+              else
+                echo "[*] Installing compose plugin..."
+                sudo apt-get update -y
+                sudo apt-get install -y docker-compose-plugin
+                sudo docker compose up -d --build
+              fi
+
+              sudo docker image prune -f || true
+            fi
+
+            echo "[✓] Deploy completed!"
+          EOF
+
+      - name: Verify deployment
+        run: |
+          ssh ubuntu@140.245.121.73 << 'EOF'
+            set -euo pipefail
+            cd /home/ubuntu/discord/discord_bot
+
+            if [ -f docker-compose.yml ]; then
+              if sudo docker compose version >/dev/null 2>&1; then
+                sudo docker compose ps
+              elif command -v docker-compose >/dev/null 2>&1; then
+                sudo docker-compose ps
+              else
+                echo "Compose not found"
+              fi
+            elif command -v pm2 >/dev/null 2>&1; then
+              pm2 status tts-bot || true
+            else
+              ps aux | grep "node app.js" | grep -v grep || echo "Process not found"
+            fi
+          EOF
