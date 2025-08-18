@@ -51,7 +51,7 @@ jobs:
         
     - name: Verify deployment
       run: |
-        ssh ubuntu@129.150.62.81 << 'EOF'
+        ssh ubuntu@140.245.121.73 << 'EOF'
           cd /home/ubuntu/discord/discord_bot
           if [ -f docker-compose.yml ]; then
             docker-compose ps
