@@ -12,6 +12,10 @@ RUN npm install
 # Copy source
 COPY . .
 
+# Đảm bảo /app/config.json là file, không phải folder
+# Nếu config.json không có trong source, tạo file rỗng
+RUN if [ ! -f /app/config.json ]; then touch /app/config.json; fi
+
 ENV NODE_ENV=production
 # Nếu muốn: RUN npm prune --production
 
